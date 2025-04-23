@@ -8,12 +8,12 @@ from typing import List
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.get("/", response_model=List[UserSimpleResponse])
-async def get_users(
+@router.get("/search", response_model=List[UserSimpleResponse])
+async def get_all_user_by_text(
     search: Optional[str] = Query(None, description="Search term for username or fullname"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(User)
+    query = db.query(User).filter(User.role == "user")  
     
     if search:
         search_term = f"%{search}%"

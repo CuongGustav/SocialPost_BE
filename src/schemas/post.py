@@ -32,6 +32,9 @@ class PostWithUserResponse(BaseModel):
     content: str
     status: PostStatus
     images: List[PostImageResponse]
+    like_count: int  
+    comment_count: int  
+    share_count: int  
     created_at: str
     updated_at: Optional[str]
 

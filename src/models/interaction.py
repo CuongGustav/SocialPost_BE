@@ -9,6 +9,7 @@ class InteractionType(enum.Enum):
     follow = "follow"
     report = "report"
     report_comment = "report_comment"
+    share = "share"
 
 class Interaction(Base):
     __tablename__ = "interactions"
