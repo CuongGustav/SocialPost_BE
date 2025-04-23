@@ -21,6 +21,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     avatar_url = Column(String(255))
+    fullname = Column(String(255))  
     bio = Column(Text)
     status = Column(Enum(UserStatus), nullable=False, default=UserStatus.active)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.user)

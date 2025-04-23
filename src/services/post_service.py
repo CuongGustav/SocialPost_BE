@@ -8,13 +8,11 @@ import uuid
 import os
 import logging
 
-# Thiết lập logging
 logger = logging.getLogger(__name__)
 
 async def create_post(db: Session, post: PostCreate, images: List[UploadFile] | None, user_id: str):
     logger.info(f"Attempting to create post for user_id: {user_id}")
 
-    # Tạo bài đăng
     db_post = Post(
         content=post.content,
         user_id=user_id,
@@ -24,23 +22,18 @@ async def create_post(db: Session, post: PostCreate, images: List[UploadFile] | 
     db.commit()
     logger.info(f"Post created: {db_post.id}")
 
-    # Xử lý danh sách ảnh
     if images:
         for image in images:
-            # Kiểm tra định dạng ảnh
             if image.content_type not in ["image/jpeg", "image/png"]:
                 logger.warning(f"Invalid image format: {image.content_type}")
                 raise HTTPException(status_code=400, detail="Only JPEG or PNG images are allowed")
 
-            # Tạo tên file duy nhất bằng UUID
             file_extension = image.filename.split(".")[-1]
             unique_filename = f"{uuid.uuid4()}.{file_extension}"
             image_path = os.path.join("static", "post", unique_filename)
 
-            # Tạo thư mục static/post nếu chưa tồn tại
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
 
-            # Lưu ảnh
             try:
                 with open(image_path, "wb") as buffer:
                     content = await image.read()
@@ -48,7 +41,6 @@ async def create_post(db: Session, post: PostCreate, images: List[UploadFile] | 
                 image_url = f"/static/post/{unique_filename}"
                 logger.info(f"Image saved: {image_url}")
 
-                # Lưu vào bảng post_images
                 db_image = PostImage(
                     post_id=db_post.id,
                     image_url=image_url
