@@ -6,6 +6,8 @@ from src.models.base import Base
 from src.api.endpoints.auth import router as auth_router
 from src.api.endpoints.post import router as post_router
 from src.api.endpoints.user import router as user_router
+from src.api.endpoints.interaction import router as interaction_router
+from src.api.endpoints.comment import router as comment_router
 
 app = FastAPI(title="SocialPost API")
 
@@ -22,6 +24,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(auth_router)
 app.include_router(post_router)
 app.include_router(user_router)
+app.include_router(interaction_router)
+app.include_router(comment_router)
+
 
 @app.get("/")
 async def root():

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session
 from src.utils.database import get_db
 from src.schemas.post import PostCreate, PostImageResponse, PostWithUserResponse
-from src.services.post_service import create_post as create_post_service
+from src.services.post_service import (create_post as create_post_service, search_posts, get_all_posts, get_posts_by_user_id, 
+                                       get_post_by_post_id)
 from src.models.post import Post, PostStatus
 from src.models.post_image import PostImage
 from src.models.user import User
@@ -34,111 +35,23 @@ async def create_post(
     return {"message": "Post created successfully"}
 
 @router.get("/", response_model=List[PostWithUserResponse])
-async def get_all_posts(db: Session = Depends(get_db)):
-    query = (
-        select(
-            Post,
-            User.username,
-            User.avatar_url,
-            func.count(Interaction.id).filter(Interaction.type == "like").label("like_count"),
-            func.count(Comment.id).label("comment_count"),
-            func.count(Interaction.id).filter(Interaction.type == "share").label("share_count")
-        )
-        .join(User, Post.user_id == User.id)
-        .outerjoin(Interaction, (Interaction.post_id == Post.id))
-        .outerjoin(Comment, Comment.post_id == Post.id)
-        .where(Post.status == PostStatus.valid)
-        .group_by(Post, User.username, User.avatar_url)
-        .order_by(Post.created_at.desc())
-    )
-    posts = db.execute(query).all()
-
-    result = []
-    for post, username, avatar_url, like_count, comment_count, share_count in posts:
-        images = db.query(PostImage).filter(PostImage.post_id == post.id).all()
-        result.append(
-            PostWithUserResponse(
-                id=str(post.id),
-                user_id=str(post.user_id),
-                username=username,
-                avatar_url=avatar_url,
-                content=post.content,
-                status=post.status,
-                images=[
-                    PostImageResponse(
-                        id=str(image.id),
-                        image_url=image.image_url,
-                        created_at=image.created_at.isoformat()
-                    )
-                    for image in images
-                ],
-                like_count=like_count,
-                comment_count=comment_count,
-                share_count=share_count,
-                created_at=post.created_at.isoformat(),
-                updated_at=post.updated_at.isoformat() if post.updated_at else None
-            )
-        )
-
-    return result
+async def get_all_posts_endpoint(db: Session = Depends(get_db)):
+    return await get_all_posts(db)
 
 @router.get("/search", response_model=List[PostWithUserResponse])
-async def search_posts(
+async def search_posts_endpoint(
     query: str = Query(..., min_length=1, description="Search term for post content"),
     db: Session = Depends(get_db)
 ):
-    tsquery = func.plainto_tsquery('simple', query)
-    like_pattern = f"%{query}%"
+    return await search_posts(db, query)
 
-    stmt = (
-        select(
-            Post,
-            User.username,
-            User.avatar_url,
-            func.count(Interaction.id).filter(Interaction.type == "like").label("like_count"),
-            func.count(Comment.id).label("comment_count"),
-            func.count(Interaction.id).filter(Interaction.type == "share").label("share_count")
-        )
-        .join(User, Post.user_id == User.id)
-        .outerjoin(Interaction, (Interaction.post_id == Post.id))
-        .outerjoin(Comment, Comment.post_id == Post.id)
-        .where(Post.status == PostStatus.valid)
-        .where(
-            (Post.search_vector.op('@@')(tsquery)) | (Post.content.ilike(like_pattern))
-        )
-        .group_by(Post, User.username, User.avatar_url)
-        .order_by(
-            func.ts_rank(Post.search_vector, tsquery).desc(),
-            Post.created_at.desc()
-        )
-    )
-    posts = db.execute(stmt).all()
+@router.get("/user/{user_id}", response_model=List[PostWithUserResponse])
+async def get_posts_by_user_id_endpoint(
+    user_id: str,
+    db: Session = Depends(get_db)
+):
+    return await get_posts_by_user_id(db, user_id)
 
-    result = []
-    for post, username, avatar_url, like_count, comment_count, share_count in posts:
-        images = db.query(PostImage).filter(PostImage.post_id == post.id).all()
-        result.append(
-            PostWithUserResponse(
-                id=str(post.id),
-                user_id=str(post.user_id),
-                username=username,
-                avatar_url=avatar_url,
-                content=post.content,
-                status=post.status,
-                images=[
-                    PostImageResponse(
-                        id=str(image.id),
-                        image_url=image.image_url,
-                        created_at=image.created_at.isoformat()
-                    )
-                    for image in images
-                ],
-                like_count=like_count,
-                comment_count=comment_count,
-                share_count=share_count,
-                created_at=post.created_at.isoformat(),
-                updated_at=post.updated_at.isoformat() if post.updated_at else None
-            )
-        )
-
-    return result
+@router.get("/{post_id}", response_model=PostWithUserResponse)
+async def get_post_by_post_id_endpoint(post_id: str, db: Session = Depends(get_db)):
+    return await get_post_by_post_id(db, post_id)
