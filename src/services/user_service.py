@@ -1,14 +1,15 @@
 from sqlalchemy.orm import Session
 from src.models.user import User
-from src.schemas.user import UserSimpleResponse
+from src.schemas.user import UserSimpleResponse, UserResponse
 from typing import List, Optional
+from uuid import UUID
 import logging
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
+#Search user by text content
 async def search_users(db: Session, search: Optional[str] = None) -> List[UserSimpleResponse]:
-    logger.info(f"Searching users with search term: {search or 'None'}")
-    
     query = db.query(User).filter(User.role == "user")
     
     if search:
@@ -34,6 +35,18 @@ async def search_users(db: Session, search: Optional[str] = None) -> List[UserSi
         )
         for user in users
     ]
-    
-    logger.info(f"Found {len(result)} users matching search term: {search or 'None'}")
     return result
+
+#get info user by user_id
+async def get_user_detail_by_user_id(db:Session, user_id:str) -> UserResponse:
+    try:
+        user_uuid = UUID(user_id) #convert str ->uuid
+
+        user = db.query(User).filter(User.id == user_uuid).first()
+
+        if not user:
+            raise HTTPException (status_code=404, detail="user not found")
+        
+        return UserResponse.from_orm(user)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid user ID format")

@@ -30,28 +30,28 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: str
     username: str
-    email: EmailStr
+    # email: EmailStr
     avatar_url: Optional[str] = None
     fullname: Optional[str] = None  
     bio: Optional[str] = None
     status: UserStatus
-    role: UserRole
+    # role: UserRole
     created_at: str
-    updated_at: Optional[str] = None  
+    # updated_at: Optional[str] = None  
 
     @classmethod
     def from_orm(cls, obj):
         return cls(
             id=str(obj.id),
             username=obj.username,
-            email=obj.email,
+            # email=obj.email,
             avatar_url=obj.avatar_url,
             fullname=obj.fullname,  
             bio=obj.bio,
             status=obj.status,
-            role=obj.role,
+            # role=obj.role,
             created_at=obj.created_at.isoformat() if obj.created_at else None,
-            updated_at=obj.updated_at.isoformat() if obj.updated_at else None
+            # updated_at=obj.updated_at.isoformat() if obj.updated_at else None
         )
 
     class Config:
