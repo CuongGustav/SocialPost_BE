@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.utils.database import get_db
 from src.schemas.post import PostCreate, PostImageResponse, PostWithUserResponse
 from src.services.post_service import (create_post as create_post_service, search_posts, get_all_posts, get_posts_by_user_id, 
-                                       get_post_by_post_id)
+                                       get_post_by_post_id, get_shared_posts_by_user_id)
 from src.models.post import Post, PostStatus
 from src.models.post_image import PostImage
 from src.models.user import User
@@ -51,6 +51,13 @@ async def get_posts_by_user_id_endpoint(
     db: Session = Depends(get_db)
 ):
     return await get_posts_by_user_id(db, user_id)
+
+@router.get("/postshare/user/{user_id}", response_model=List[PostWithUserResponse])
+async def get_share_posts_by_user_id_endpoint(
+    user_id: str,
+    db:Session =Depends(get_db)
+):
+    return await get_shared_posts_by_user_id(db, user_id)
 
 @router.get("/{post_id}", response_model=PostWithUserResponse)
 async def get_post_by_post_id_endpoint(post_id: str, db: Session = Depends(get_db)):

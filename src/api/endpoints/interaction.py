@@ -9,7 +9,7 @@ router = APIRouter(prefix="/interactions", tags=["interactions"])
 
 async def get_current_user() -> str:
     # Thay bằng logic xác thực JWT hoặc session thực tế
-    return "fd61b848-fb84-4f23-9ff7-634da445f9ec"
+    return "a048249b-41da-424d-8609-7ba4e8d5096f"
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_interaction_endpoint(

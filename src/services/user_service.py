@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from src.models.user import User
-from src.schemas.user import UserSimpleResponse, UserResponse
+from src.models.interaction import Interaction, InteractionType
+from src.schemas.user import UserSimpleResponse, UserWithFollowResponse
 from typing import List, Optional
 from uuid import UUID
 import logging
@@ -8,7 +10,7 @@ from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
-#Search user by text content
+# Tìm kiếm người dùng theo nội dung văn bản
 async def search_users(db: Session, search: Optional[str] = None) -> List[UserSimpleResponse]:
     query = db.query(User).filter(User.role == "user")
     
@@ -37,16 +39,39 @@ async def search_users(db: Session, search: Optional[str] = None) -> List[UserSi
     ]
     return result
 
-#get info user by user_id
-async def get_user_detail_by_user_id(db:Session, user_id:str) -> UserResponse:
+# Lấy thông tin chi tiết người dùng theo user_id
+async def get_user_detail_by_user_id(db: Session, user_id: str) -> UserWithFollowResponse:
     try:
-        user_uuid = UUID(user_id) #convert str ->uuid
-
-        user = db.query(User).filter(User.id == user_uuid).first()
-
-        if not user:
-            raise HTTPException (status_code=404, detail="user not found")
-        
-        return UserResponse.from_orm(user)
+        # Xác thực và chuyển đổi user_id thành UUID
+        user_uuid = UUID(user_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="invalid user ID format")
+        logger.error(f"Định dạng UUID không hợp lệ cho user_id: {user_id}")
+        raise HTTPException(status_code=400, detail="Định dạng ID người dùng không hợp lệ")
+
+    user = (
+        db.query(
+            User,
+            func.count(Interaction.id).label("follow_count")
+        )
+        .outerjoin(
+            Interaction,
+            (Interaction.target_user_id == User.id) &
+            (Interaction.type == InteractionType.follow)
+        )
+        .filter(User.id == user_uuid)
+        .group_by(User.id)
+        .first()
+    )
+
+    if not user:
+        logger.info(f"Không tìm thấy người dùng với user_id: {user_id}")
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+
+    user_obj, follow_count = user
+    # Truyền follow_count vào from_orm
+    response = UserWithFollowResponse.from_orm(
+        user_obj,
+        follow_count=follow_count if follow_count is not None else 0
+    )
+
+    return response

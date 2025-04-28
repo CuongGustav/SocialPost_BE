@@ -5,7 +5,7 @@ from src.schemas.post import PostCreate, PostWithUserResponse, PostImageResponse
 from fastapi import UploadFile, HTTPException
 from sqlalchemy import select, func
 from src.models.user import User
-from src.models.interaction import Interaction
+from src.models.interaction import Interaction, InteractionType
 from src.models.comment import Comment
 from typing import List
 import uuid
@@ -237,6 +237,66 @@ async def get_posts_by_user_id (db: Session, user_id: str) -> List[PostWithUserR
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
     
+#get all post share by user_id
+async def get_shared_posts_by_user_id (db:Session, user_id: str) -> List[PostWithUserResponse]:
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=400, detail="User not found")
+        query = (
+            select(
+                Post,
+                User.username,
+                User.avatar_url,
+                func.count(Interaction.id).filter(Interaction.type == "like").label("like_count"),
+                func.count(Comment.id).label("comment_count"),
+                func.count(Interaction.id).filter(Interaction.type == "share").label("share_count")
+            )
+            .join(User, Post.user_id == User.id)
+            .join(Interaction, Interaction.post_id == Post.id)
+            .outerjoin(Comment, Comment.post_id == Post.id)
+            .where(Post.status == PostStatus.valid)
+            .where(Interaction.type == InteractionType.share)
+            .where(Interaction.user_id == user_id)
+            .group_by(Post, User.username, User.avatar_url)
+            .order_by(Post.created_at.desc())
+        )
+
+        posts = db.execute(query).all()
+
+        result = []
+
+        for post, username, avatar_url, like_count, comment_count, share_count in posts:
+            images = db.query(PostImage).filter(PostImage.post_id == post.id).all()
+            result.append(
+                PostWithUserResponse(
+                    id = str(post.id),
+                    user_id = str(post.user_id),
+                    username = username,
+                    avatar_url = avatar_url,
+                    content = post.content,
+                    status = post.status,
+                    images = [
+                        PostImageResponse(
+                            id=str(image.id),
+                            image_url=image.image_url,
+                            created_at=image.created_at.isoformat()
+                        )
+                        for image in images
+                    ],
+                    like_count=like_count,
+                    comment_count=comment_count,
+                    share_count=share_count,
+                    created_at=post.created_at.isoformat(),
+                    updated_at=post.updated_at.isoformat() if post.updated_at else None
+                )
+            )
+        return result
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 #get post by post id
 async def get_post_by_post_id(db: Session, post_id: str) -> PostWithUserResponse: 
     logger.info(f"Fetching post with post_id: {post_id}")

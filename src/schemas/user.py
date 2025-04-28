@@ -12,46 +12,42 @@ class UserCreate(BaseModel):
     @field_validator("username")
     def username_length(cls, v):
         if len(v) < 3 or len(v) > 50:
-            raise ValueError("Username must be between 3 and 50 characters")
+            raise ValueError("Tên người dùng phải từ 3 đến 50 ký tự")
         return v
 
     @field_validator("password")
     def password_length(cls, v):
         if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
+            raise ValueError("Mật khẩu phải có ít nhất 8 ký tự")
         return v
 
     @field_validator("fullname")
     def fullname_length(cls, v):
         if v and len(v) > 255:
-            raise ValueError("Fullname must not exceed 255 characters")
+            raise ValueError("Tên đầy đủ không được vượt quá 255 ký tự")
         return v
 
-class UserResponse(BaseModel):
+class UserWithFollowResponse(BaseModel):
     id: str
     username: str
-    # email: EmailStr
     avatar_url: Optional[str] = None
     fullname: Optional[str] = None  
     bio: Optional[str] = None
+    follow_count: int
     status: UserStatus
-    # role: UserRole
     created_at: str
-    # updated_at: Optional[str] = None  
 
     @classmethod
-    def from_orm(cls, obj):
+    def from_orm(cls, obj, follow_count: int = 0):
         return cls(
             id=str(obj.id),
             username=obj.username,
-            # email=obj.email,
             avatar_url=obj.avatar_url,
             fullname=obj.fullname,  
             bio=obj.bio,
             status=obj.status,
-            # role=obj.role,
             created_at=obj.created_at.isoformat() if obj.created_at else None,
-            # updated_at=obj.updated_at.isoformat() if obj.updated_at else None
+            follow_count=follow_count
         )
 
     class Config:
